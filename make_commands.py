@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 import os
+from lxml import etree
 
 BASE_DIR = "cves"
 
@@ -20,32 +21,20 @@ def get_cve_ids_from_export(export_file_path):
     return list(cve_ids)
 
 
-
-def merge_oval_files(file_paths, output_path="CVE.FSTEK.xml"):
-    if not file_paths:
-        print("Список файлов пуст.")
+def merge_oval_files(files_list, output_file_path="CVE.FSTEK.xml"):
+    if not files_list or len(files_list) < 2:
+        print("Нужно минимум два файла для слияния")
         return
+    tree1 = etree.parse(files_list[0])
+    root1 = tree1.getroot()
+    for file_path in files_list[1:]:
+        tree = etree.parse(file_path)
+        vulnerabilities = tree.xpath('//vulnerability')
+        for vulnerability in vulnerabilities:
+            root1.append(vulnerability)
+    tree1.write(output_file_path, pretty_print=True, xml_declaration=True, encoding="UTF-8")
+    return files_list[1:]
 
-    base_tree = ET.parse(file_paths[0])
-    base_root = base_tree.getroot()
-    new_root = ET.Element(base_root.tag, attrib=base_root.attrib)
-    new_tree = ET.ElementTree(new_root)
-
-    for generator in base_root.findall('{http://oval.mitre.org/XMLSchema/oval-definitions-5}generator'):
-        new_root.append(generator)
-
-    added_definitions = set()
-    for file_path in file_paths:
-        tree = ET.parse(file_path)
-        root = tree.getroot()
-        for definition in root.findall('{http://oval.mitre.org/XMLSchema/oval-definitions-5}definitions'):
-            for child in definition:
-                def_id = child.get('id')
-                if def_id not in added_definitions:
-                    new_root.append(child)
-                    added_definitions.add(def_id)
-
-    new_tree.write(output_path)
 
 def make_commands(export_file_path):
     cve_ids = get_cve_ids_from_export(export_file_path)
@@ -59,7 +48,7 @@ def make_commands(export_file_path):
     with open('oval_make.command', 'w') as file:
         for cve_id in cve_ids_final:
             counter += 1
-            if counter % 30000 == 0:
+            if counter % 5000 == 0:
                 counter2 += 1
                 files.append(f"CVE.FSTEK{counter2}.xml")
                 file.write("\n")
