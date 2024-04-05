@@ -5,4 +5,4 @@ pip install -r FstekOvalCheck/requirements.txt
 cd FstekOvalCheck
 python3 main.py
 oscap oval eval --results results.xml --report report.html CVE.FSTEK.xml
-python3 reformatHtml.py
+python3 reformat_html.py
